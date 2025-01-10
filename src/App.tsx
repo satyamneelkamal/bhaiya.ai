@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-
+import React, { useState, useRef, useEffect, ComponentPropsWithoutRef } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { Send, Bot, User, Search, PenSquare, SidebarClose, MessageSquare } from 'lucide-react';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { BrowserRouter } from 'react-router-dom';
@@ -21,7 +21,13 @@ interface Conversation {
 const GEMINI_API_KEY = import.meta.env.GEMINI_API_KEY;
 console.log('GEMINI_API_KEY available:', !!GEMINI_API_KEY);
 
+type CodeProps = ComponentPropsWithoutRef<'code'> & {
+  inline?: boolean;
+  node?: any;
+};
+
 function App() {
+  const isEdgeBrowser = /Edg/.test(navigator.userAgent);
   const [conversations, setConversations] = useState<Conversation[]>([
     {
       id: '1',
@@ -61,11 +67,7 @@ function App() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!genAI) {
-      console.error('Gemini AI not initialized');
-      return;
-    }
-    if (!input.trim()) return;
+    if (!genAI || !input.trim()) return;
 
     const userMessage: Message = {
       content: input,
@@ -87,7 +89,42 @@ function App() {
 
     try {
       const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+      const currentConv = conversations.find(c => c.id === currentConversation);
       
+      let titlePromise;
+      if (currentConv?.messages.length === 0) {
+        titlePromise = (async () => {
+          if (isEdgeBrowser) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+          
+          let titleResult;
+          let retryCount = 0;
+          const maxRetries = 3;
+          
+          while (retryCount < maxRetries) {
+            try {
+              titleResult = await model.generateContent(`Generate a very brief title (4-5 words max) summarizing this message: "${input}"`);
+              if (!titleResult) {
+                throw new Error('Failed to generate title - no result returned');
+              }
+              break;
+            } catch (genError) {
+              retryCount++;
+              if (retryCount === maxRetries) throw genError;
+              await new Promise(resolve => setTimeout(resolve, 200 * retryCount));
+            }
+          }
+          
+          if (!titleResult) {
+            throw new Error('Failed to generate title after retries');
+          }
+          
+          const titleResponse = await titleResult.response;
+          const titleText = titleResponse?.text?.() || '';
+          return titleText.trim() || `Chat about ${input.slice(0, 20)}...`;
+        })();
+      }
 
       const result = await model.generateContent(input);
       const response = await result.response;
@@ -99,15 +136,28 @@ function App() {
         timestamp: new Date(),
       };
 
+      let finalTitle: string | undefined;
+      if (titlePromise) {
+        try {
+          finalTitle = await titlePromise;
+        } catch (error) {
+          finalTitle = isEdgeBrowser ? 
+            'New Conversation' : 
+            `Chat about ${input.slice(0, 20)}...`;
+        }
+      }
+
       setConversations(prev => prev.map(conv => {
         if (conv.id === currentConversation) {
           return {
             ...conv,
+            title: finalTitle || conv.title,
             messages: [...conv.messages, botMessage],
           };
         }
         return conv;
       }));
+
     } catch (error) {
       console.error('Error generating response:', error);
       
@@ -166,11 +216,9 @@ What are effective ways to improve work-life balance?`;
       
       console.log('API Response:', text);
       
-      // Clean and process the suggestions
       let newSuggestions = text
         .split('\n')
         .map(s => s.trim())
-        // Remove markdown formatting and prefixes
         .map(s => s.replace(/^\*\*[^:]+:\*\*\s*/, ''))
         .filter(s => s && s.length > 0);
 
@@ -187,7 +235,6 @@ What are effective ways to improve work-life balance?`;
         return;
       }
 
-      // Ensure we have exactly 4 suggestions
       while (newSuggestions.length < 4) {
         newSuggestions.push(
           "What emerging technologies will shape our future?",
@@ -347,8 +394,36 @@ What are effective ways to improve work-life balance?`;
                       )}
                     </div>
                     <div className="min-h-[20px] flex flex-col flex-1">
-                      <div className="prose prose-invert flex-1">
-                        <p>{message.content}</p>
+                      <div className="prose prose-invert prose-pre:bg-[#2A2B32] prose-pre:border prose-pre:border-white/10 prose-pre:rounded-lg max-w-none">
+                        <ReactMarkdown
+                          components={{
+                            p: ({ children }) => <p className="mb-4 last:mb-0">{children}</p>,
+                            h1: ({ children }) => <h1 className="text-2xl font-bold mb-4">{children}</h1>,
+                            h2: ({ children }) => <h2 className="text-xl font-bold mb-3">{children}</h2>,
+                            h3: ({ children }) => <h3 className="text-lg font-bold mb-2">{children}</h3>,
+                            ul: ({ children }) => <ul className="list-disc pl-6 mb-4">{children}</ul>,
+                            ol: ({ children }) => <ol className="list-decimal pl-6 mb-4">{children}</ol>,
+                            li: ({ children }) => <li className="mb-1">{children}</li>,
+                            code: function Code({ inline, className, children, ...props }: CodeProps) {
+                              if (inline) {
+                                return (
+                                  <code className="bg-[#2A2B32] px-1.5 py-0.5 rounded text-sm" {...props}>
+                                    {children}
+                                  </code>
+                                );
+                              }
+                              return (
+                                <pre className="p-4 overflow-x-auto">
+                                  <code className="text-sm" {...props}>
+                                    {children}
+                                  </code>
+                                </pre>
+                              );
+                            }
+                          }}
+                        >
+                          {message.content}
+                        </ReactMarkdown>
                       </div>
                     </div>
                   </div>

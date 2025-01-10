@@ -4,12 +4,13 @@ import path from 'path';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  // Load env file based on `mode` in the current working directory.
+  // Load environment variables
   const env = loadEnv(mode, process.cwd(), '');
   
   return {
     plugins: [react()],
     optimizeDeps: {
+      // Exclude lucide-react for better build optimization
       exclude: ['lucide-react'],
     },
     define: {
@@ -17,6 +18,7 @@ export default defineConfig(({ mode }) => {
       'import.meta.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
     },
     resolve: {
+      // Configure path aliases for better import management
       alias: {
         '@': path.resolve(__dirname, './src'),
       },
