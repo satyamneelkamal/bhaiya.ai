@@ -7,6 +7,9 @@ import { Skeleton } from "./components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { systemPrompts, generationConfig } from '@/lib/prompts';
 import { GlassDialog } from "./components/ui/glass-dialog";
+import { HomeButton } from './components/elements/home-button';
+// Temporarily comment out unused import
+// import { Background3D } from "./components/ui/background-3d";
 
 interface Message {
   content: string | React.ReactElement;
@@ -268,31 +271,82 @@ What are effective ways to improve work-life balance?`;
 
   const EmptyState = () => (
     <div className="flex-1 flex flex-col items-center justify-center p-4 min-h-[calc(100vh-8rem)]">
-      <div className="w-16 h-16 bg-gradient-premium from-[#10A37F] to-[#0D8A6F] rounded-full 
-        flex items-center justify-center mb-6 animate-gradient-shift shadow-lg">
-        <Bot className="w-8 h-8 text-white/90" />
-      </div>
-      <div className="flex items-center gap-2 mb-8 animate-content-reveal">
-        <h1 className="text-4xl font-bold bg-gradient-premium from-white to-white/80 bg-clip-text text-transparent">
-          How can I help you today?
-        </h1>
-        <button
-          onClick={generateSuggestions}
-          className="p-2 hover:bg-white/5 rounded-full transition-all duration-300 
-            hover:animate-hover-glow group"
-          title="Refresh suggestions"
+      {/* Clickable Logo Section */}
+      <button
+        onClick={generateSuggestions}
+        className="relative mb-8 group hover:scale-110 transition-all duration-700"
+        title="Refresh suggestions"
+        onMouseEnter={(e) => {
+          const target = e.currentTarget.querySelector('.logo-container') as HTMLDivElement;
+          if (target) {
+            target.classList.remove('animate-spin-once');
+            // Force a reflow
+            void target.offsetWidth;
+            target.classList.add('animate-spin-once');
+          }
+        }}
+      >
+        {/* Logo container with contained glow effects */}
+        <div className="logo-container relative w-20 h-20 bg-gradient-premium from-[#10A37F] to-[#0D8A6F] 
+          rounded-2xl rotate-12 transform-gpu
+          flex items-center justify-center
+          shadow-md shadow-[#10A37F]/10 group-hover:shadow-[#10A37F]/20
+          overflow-hidden animate-spin-once
+          hover:animate-bounce-subtle"
         >
-          <svg 
-            className="w-6 h-6 text-white/70 group-hover:text-white/90 transition-colors"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
+          {/* Internal glowing rings */}
+          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-all duration-700">
+            <div className="absolute inset-[-50%] bg-gradient-conic from-[#10A37F]/30 via-transparent to-[#10A37F]/30 
+              rounded-full blur-md animate-spin-slow" />
+            <div className="absolute inset-[-50%] bg-gradient-conic from-[#10A37F]/20 via-transparent to-[#10A37F]/20 
+              rounded-full blur-md animate-spin-slow-reverse" />
+            <div className="absolute inset-[-25%] bg-gradient-radial from-[#10A37F]/10 to-transparent 
+              rounded-full blur-sm animate-pulse-fast" />
+          </div>
+
+          {/* Shine effect overlay */}
+          <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent 
+            pointer-events-none group-hover:opacity-0 transition-opacity duration-700" />
+          
+          {/* Border effect */}
+          <div className="absolute inset-0 ring-1 ring-white/10 group-hover:ring-white/20 
+            rounded-2xl transition-all duration-700" />
+          
+          {/* Animated gradient borders */}
+          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 
+            transition-opacity duration-700 overflow-hidden"
           >
-            <path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9" />
-          </svg>
-        </button>
+            <div className="absolute inset-[-50%] bg-gradient-conic from-[#10A37F]/30 via-transparent to-[#10A37F]/30 
+              animate-spin-slow" />
+            <div className="absolute inset-[-25%] bg-gradient-radial from-[#10A37F]/20 to-transparent 
+              animate-pulse-fast" />
+          </div>
+          
+          {/* Icon with enhanced effects */}
+          <Bot className="w-10 h-10 text-white group-hover:scale-110 transition-all duration-700
+            drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)] relative z-10
+            group-hover:animate-wiggle" />
+        </div>
+      </button>
+
+      {/* Title Section */}
+      <div className="relative flex flex-col items-center gap-3 mb-12">
+        <div className="relative group">
+          <h1 className="text-5xl font-bold text-transparent bg-clip-text 
+            bg-gradient-to-r from-white via-white to-white/80
+            tracking-tight py-4 px-2 leading-[1.2]"
+          >
+            How can I help you today?
+          </h1>
+          
+          <div className="absolute bottom-0 left-0 right-0 h-[1px] 
+            bg-gradient-to-r from-transparent via-[#10A37F]/20 to-transparent
+            group-hover:via-[#10A37F]/30 transition-all duration-700" 
+          />
+        </div>
       </div>
+
+      {/* Rest of the suggestions grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl w-full">
         {suggestions.map((suggestion, index) => (
           suggestion === "Loading suggestions..." ? (
@@ -351,61 +405,89 @@ What are effective ways to improve work-life balance?`;
 
   return (
     <BrowserRouter>
-      <div className="h-screen flex bg-[#343541]">
+      <div className="h-screen flex bg-[#343541] text-white relative overflow-hidden">
+        {/* Background3D implementation (currently disabled) */}
+        {/*
+        <Background3D 
+          intensity="subtle" 
+          className="absolute inset-0 pointer-events-none"
+          interactive={true}
+        />
+        */}
+
         {/* Sidebar */}
         {isSidebarOpen && (
-          <div className="w-80 bg-[#202123] flex flex-col">
+          <div className="w-80 bg-[#202123] border-r border-white/20 flex flex-col relative">
             {/* Top Icons */}
-            <div className="p-2 flex items-center justify-between">
+            <div className="p-2 flex items-center justify-between border-b border-white/[0.05]">
               <button
                 onClick={() => setIsSidebarOpen(false)}
-                className="p-2 hover:bg-white/5 rounded-md transition-colors"
+                className="p-2 hover:bg-white/5 rounded-md transition-all duration-300 hover:scale-105"
               >
-                <SidebarClose className="w-5 h-5 text-white" />
+                <SidebarClose className="w-5 h-5 text-white/80 hover:text-white" />
               </button>
               <div className="flex items-center gap-2">
                 <button
-                  className="p-2 hover:bg-white/5 rounded-md transition-colors"
+                  className="p-2 hover:bg-white/5 rounded-md transition-all duration-300 hover:scale-105"
                 >
-                  <Search className="w-5 h-5 text-white" />
+                  <Search className="w-5 h-5 text-white/80 hover:text-white" />
                 </button>
                 <button
                   onClick={startNewConversation}
-                  className="p-2 hover:bg-white/5 rounded-md transition-colors"
+                  className="p-2 hover:bg-white/5 rounded-md transition-all duration-300 hover:scale-105"
                 >
-                  <PenSquare className="w-5 h-5 text-white" />
+                  <PenSquare className="w-5 h-5 text-white/80 hover:text-white" />
                 </button>
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto">
+            
+            {/* HomeButton wrapper */}
+            <div className="px-2 py-1">
+              <HomeButton 
+                isNewChat={getCurrentConversation()?.messages.length === 0} 
+              />
+            </div>
+
+            {/* Chat History */}
+            <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
               {conversations.map(conv => (
                 <button
                   key={conv.id}
                   onClick={() => setCurrentConversation(conv.id)}
-                  className={`group w-full px-3 py-3 text-left text-white/90 hover:bg-[#2A2B32] flex items-center gap-3 ${
-                    currentConversation === conv.id ? 'bg-[#343541]' : ''
-                  }`}
+                  className={`group w-full px-3 py-3 text-left text-white/90 
+                    hover:bg-gradient-to-r hover:from-[#2A2B32] hover:to-[#2A2B32]/80
+                    transition-all duration-300 flex items-center gap-3 relative
+                    ${currentConversation === conv.id ? 'bg-gradient-to-r from-[#343541] to-[#343541]/90' : ''}`}
                 >
-                  <MessageSquare className="w-4 h-4 shrink-0" />
-                  <div className="flex-1 truncate text-sm">
+                  {/* Active indicator */}
+                  {currentConversation === conv.id && (
+                    <div className="absolute left-0 top-0 h-full w-[2px] bg-[#10A37F]" />
+                  )}
+                  
+                  <MessageSquare className={`w-4 h-4 shrink-0 transition-colors duration-300
+                    ${currentConversation === conv.id ? 'text-[#10A37F]' : 'text-white/70'}`} />
+                  
+                  <div className="flex-1 truncate text-sm font-medium">
                     {conv.title}
                   </div>
+                  
                   <button
                     onClick={(e) => initiateDelete(conv.id, e)}
-                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-white/10 rounded transition-all duration-200"
+                    className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-white/10 
+                      rounded-full transition-all duration-200 hover:scale-105"
                     aria-label="Delete conversation"
                   >
                     <svg 
                       xmlns="http://www.w3.org/2000/svg" 
-                      width="16" 
-                      height="16" 
+                      width="14" 
+                      height="14" 
                       viewBox="0 0 24 24" 
                       fill="none" 
                       stroke="currentColor" 
                       strokeWidth="2" 
                       strokeLinecap="round" 
                       strokeLinejoin="round"
-                      className="text-white/70 hover:text-white"
+                      className="text-white/60 hover:text-white/90 transition-colors"
                     >
                       <path d="M3 6h18" />
                       <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
@@ -419,7 +501,7 @@ What are effective ways to improve work-life balance?`;
         )}
 
         {/* Main Chat Area */}
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col relative">
           {/* Top Bar */}
           {!isSidebarOpen && (
             <div className="border-b border-white/20 p-2">
@@ -551,19 +633,19 @@ What are effective ways to improve work-life balance?`;
             </form>
           </div>
         </div>
-      </div>
 
-      <GlassDialog
-        isOpen={showDeleteConfirm}
-        onClose={() => setShowDeleteConfirm(false)}
-        title="Delete Conversation"
-        description="Are you sure you want to delete this conversation? This action cannot be undone."
-        icon={<MessageSquare className="w-5 h-5 text-white/90" />}
-        confirmText="Delete"
-        cancelText="Cancel"
-        onConfirm={confirmDelete}
-        variant="danger"
-      />
+        <GlassDialog
+          isOpen={showDeleteConfirm}
+          onClose={() => setShowDeleteConfirm(false)}
+          title="Delete Conversation"
+          description="Are you sure you want to delete this conversation? This action cannot be undone."
+          icon={<MessageSquare className="w-5 h-5 text-white/90" />}
+          confirmText="Delete"
+          cancelText="Cancel"
+          onConfirm={confirmDelete}
+          variant="danger"
+        />
+      </div>
     </BrowserRouter>
   );
 }
