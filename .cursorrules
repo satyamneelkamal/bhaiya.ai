@@ -1,1 +1,5 @@
 in .env file, dont use VITE_ prefix for environment variables.
+add extensive comments to the code.
+keep track of the changes you make to the code in @changelog.md file.
+keep the code clean and readable.
+use tailwindcss for styling.

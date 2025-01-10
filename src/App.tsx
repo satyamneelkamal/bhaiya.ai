@@ -4,6 +4,8 @@ import { Send, Bot, User, Search, PenSquare, SidebarClose, MessageSquare } from 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { BrowserRouter } from 'react-router-dom';
 import { Skeleton } from "./components/ui/skeleton";
+import { ShadowContainer } from "./components/ui/shadow-container";
+import { BackgroundGradient } from "./components/ui/background-gradient";
 
 interface Message {
   content: string;
@@ -47,6 +49,8 @@ function App() {
     "Loading suggestions..."
   ]);
   const [genAI, setGenAI] = useState<GoogleGenerativeAI | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [conversationToDelete, setConversationToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     if (!import.meta.env.GEMINI_API_KEY) {
@@ -309,6 +313,30 @@ What are effective ways to improve work-life balance?`;
     </div>
   );
 
+  const initiateDelete = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setConversationToDelete(id);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = () => {
+    if (!conversationToDelete) return;
+    
+    setConversations(prev => prev.filter(conv => conv.id !== conversationToDelete));
+    
+    if (currentConversation === conversationToDelete) {
+      const remainingConvs = conversations.filter(conv => conv.id !== conversationToDelete);
+      if (remainingConvs.length > 0) {
+        setCurrentConversation(remainingConvs[0].id);
+      } else {
+        startNewConversation();
+      }
+    }
+    
+    setShowDeleteConfirm(false);
+    setConversationToDelete(null);
+  };
+
   return (
     <BrowserRouter>
       <div className="h-screen flex bg-[#343541]">
@@ -342,7 +370,7 @@ What are effective ways to improve work-life balance?`;
                 <button
                   key={conv.id}
                   onClick={() => setCurrentConversation(conv.id)}
-                  className={`w-full px-3 py-3 text-left text-white/90 hover:bg-[#2A2B32] flex items-center gap-3 ${
+                  className={`group w-full px-3 py-3 text-left text-white/90 hover:bg-[#2A2B32] flex items-center gap-3 ${
                     currentConversation === conv.id ? 'bg-[#343541]' : ''
                   }`}
                 >
@@ -350,6 +378,28 @@ What are effective ways to improve work-life balance?`;
                   <div className="flex-1 truncate text-sm">
                     {conv.title}
                   </div>
+                  <button
+                    onClick={(e) => initiateDelete(conv.id, e)}
+                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-white/10 rounded transition-all duration-200"
+                    aria-label="Delete conversation"
+                  >
+                    <svg 
+                      xmlns="http://www.w3.org/2000/svg" 
+                      width="16" 
+                      height="16" 
+                      viewBox="0 0 24 24" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      strokeWidth="2" 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round"
+                      className="text-white/70 hover:text-white"
+                    >
+                      <path d="M3 6h18" />
+                      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                    </svg>
+                  </button>
                 </button>
               ))}
             </div>
@@ -455,6 +505,40 @@ What are effective ways to improve work-life balance?`;
           </div>
         </div>
       </div>
+
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <BackgroundGradient containerClassName="w-full max-w-sm mx-4">
+            <ShadowContainer 
+              variant="aceternity"
+              className="bg-[#1c1c1c]/80 rounded-xl p-6 w-full border border-white/[0.08] 
+                backdrop-blur-sm relative overflow-visible isolate
+                hover:shadow-2xl transition-all duration-300"
+            >
+              <h2 className="text-xl font-semibold text-white mb-4">Delete Conversation</h2>
+              <p className="text-white/90 mb-6">
+                Are you sure you want to delete this conversation? This action cannot be undone.
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="px-4 py-2 text-white/70 hover:text-white transition-colors"
+                >
+                  Cancel
+                </button>
+                <ShadowContainer variant="colored">
+                  <button
+                    onClick={confirmDelete}
+                    className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                  >
+                    Delete
+                  </button>
+                </ShadowContainer>
+              </div>
+            </ShadowContainer>
+          </BackgroundGradient>
+        </div>
+      )}
     </BrowserRouter>
   );
 }

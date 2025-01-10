@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- Enhanced UI Components
+  - Add reusable ShadowContainer component for consistent shadow effects
+  - Implement Aceternity-inspired shadow styling
+  - Add multiple shadow variants (sm, md, lg, xl, inner, colored, glow, aceternity)
+  - Add delete confirmation modal with modern glassmorphic design
+  - Add animated gradient background effect to modals
+  - Implement subtle glow effects with customizable opacity
 - Dynamic AI suggestions using Gemini API
   - Implement skeleton loading component for better UX
   - Add refresh functionality for suggestions
@@ -23,6 +30,14 @@ All notable changes to this project will be documented in this file.
   - Add fallback titles for error cases
 
 ### Changed
+- Improve UI consistency and aesthetics
+  - Refactor shadow styles into reusable utility
+  - Enhance modal design with backdrop blur and border effects
+  - Add smooth transitions for hover states
+  - Implement consistent shadow effects across components
+  - Fine-tune gradient animations and glow effects
+  - Optimize border thickness and border radius for modals
+  - Improve modal backdrop with proper opacity and blur
 - Move GenAI initialization to useEffect
 - Improve suggestion formatting and filtering
 - Clean API responses to ensure consistent formatting
@@ -41,6 +56,14 @@ All notable changes to this project will be documented in this file.
   - Add contextual fallback titles
 
 ### Technical
+- Add shadow styling system
+  - Implement type-safe shadow variants
+  - Add utility functions for combining Tailwind classes
+  - Create reusable shadow container component
+  - Add proper TypeScript types for shadow variants
+  - Add BackgroundGradient component for animated effects
+  - Implement framer-motion for smooth gradient animations
+  - Add customizable animation controls and transitions
 - Configure path aliases for better import management
 - Add utility functions (clsx, tailwind-merge)
 - Add proper TypeScript types for components
