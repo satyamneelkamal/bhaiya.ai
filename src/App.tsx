@@ -4,10 +4,9 @@ import { Send, Bot, User, Search, PenSquare, SidebarClose, MessageSquare } from 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { BrowserRouter } from 'react-router-dom';
 import { Skeleton } from "./components/ui/skeleton";
-import { ShadowContainer } from "./components/ui/shadow-container";
-import { BackgroundGradient } from "./components/ui/background-gradient";
 import { cn } from "@/lib/utils";
 import { systemPrompts, generationConfig } from '@/lib/prompts';
+import { GlassDialog } from "./components/ui/glass-dialog";
 
 interface Message {
   content: string | React.ReactElement;
@@ -268,19 +267,23 @@ What are effective ways to improve work-life balance?`;
   }, [genAI]);
 
   const EmptyState = () => (
-    <div className="flex-1 flex flex-col items-center justify-center p-4">
-      <div className="w-16 h-16 bg-[#10A37F] rounded-full flex items-center justify-center mb-6">
-        <Bot className="w-8 h-8 text-white" />
+    <div className="flex-1 flex flex-col items-center justify-center p-4 min-h-[calc(100vh-8rem)]">
+      <div className="w-16 h-16 bg-gradient-premium from-[#10A37F] to-[#0D8A6F] rounded-full 
+        flex items-center justify-center mb-6 animate-gradient-shift shadow-lg">
+        <Bot className="w-8 h-8 text-white/90" />
       </div>
-      <div className="flex items-center gap-2 mb-6">
-        <h1 className="text-4xl font-bold text-white">How can I help you today?</h1>
+      <div className="flex items-center gap-2 mb-8 animate-content-reveal">
+        <h1 className="text-4xl font-bold bg-gradient-premium from-white to-white/80 bg-clip-text text-transparent">
+          How can I help you today?
+        </h1>
         <button
           onClick={generateSuggestions}
-          className="p-2 hover:bg-[#2A2B32] rounded-full transition-colors"
+          className="p-2 hover:bg-white/5 rounded-full transition-all duration-300 
+            hover:animate-hover-glow group"
           title="Refresh suggestions"
         >
           <svg 
-            className="w-6 h-6 text-white"
+            className="w-6 h-6 text-white/70 group-hover:text-white/90 transition-colors"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -304,9 +307,17 @@ What are effective ways to improve work-life balance?`;
                 setInput(suggestion);
                 document.querySelector('input')?.focus();
               }}
-              className="p-4 bg-[#40414F] rounded-lg text-white text-left hover:bg-[#2A2B32] transition-colors"
+              className="p-4 rounded-lg text-left transition-all duration-300
+                bg-gradient-premium from-[#40414F]/80 to-[#343541]/80
+                hover:from-[#40414F] hover:to-[#343541]
+                border border-white/[0.05] hover:border-white/[0.08]
+                group relative overflow-hidden"
             >
-              {suggestion}
+              <div className="absolute inset-0 bg-gradient-premium from-white/[0.03] to-transparent 
+                opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <p className="relative z-10 text-white/90 group-hover:text-white transition-colors">
+                {suggestion}
+              </p>
             </button>
           )
         ))}
@@ -449,7 +460,7 @@ What are effective ways to improve work-life balance?`;
                       message.sender === 'bot' && 
                       !React.isValidElement(message.content) && 
                       message.timestamp > new Date(Date.now() - 1000) &&
-                        "animate-text-reveal [&_p]:animate-text-reveal [&_p]:opacity-0",
+                      "animate-content-reveal [&_p]:animate-content-reveal",
                       "[&_p:nth-child(1)]:animation-delay-[0ms]",
                       "[&_p:nth-child(2)]:animation-delay-[100ms]",
                       "[&_p:nth-child(3)]:animation-delay-[200ms]",
@@ -516,17 +527,23 @@ What are effective ways to improve work-life balance?`;
           {/* Input */}
           <div className="border-t border-white/20 bg-[#343541] p-4">
             <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
-              <div className="relative">
+              <div className="relative group">
                 <input
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   placeholder="Message Bhaiya AI..."
-                  className="w-full bg-[#40414F] text-white rounded-lg pl-4 pr-12 py-3 focus:outline-none focus:ring-2 focus:ring-[#10A37F]"
+                  className="w-full bg-gradient-premium from-[#40414F]/90 to-[#343541]/90 
+                    text-white rounded-lg pl-4 pr-12 py-3 
+                    border border-white/[0.05] group-hover:border-white/[0.08]
+                    focus:outline-none focus:ring-2 focus:ring-[#10A37F]/50
+                    transition-all duration-300"
                 />
                 <button
                   type="submit"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition-colors p-1"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 
+                    text-white/50 hover:text-white transition-colors p-1
+                    hover:animate-hover-glow"
                 >
                   <Send className="w-5 h-5" />
                 </button>
@@ -536,39 +553,17 @@ What are effective ways to improve work-life balance?`;
         </div>
       </div>
 
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <BackgroundGradient containerClassName="w-full max-w-sm mx-4">
-            <ShadowContainer 
-              variant="aceternity"
-              className="bg-[#1c1c1c]/80 rounded-xl p-6 w-full border border-white/[0.08] 
-                backdrop-blur-sm relative overflow-visible isolate
-                hover:shadow-2xl transition-all duration-300"
-            >
-              <h2 className="text-xl font-semibold text-white mb-4">Delete Conversation</h2>
-              <p className="text-white/90 mb-6">
-                Are you sure you want to delete this conversation? This action cannot be undone.
-              </p>
-              <div className="flex justify-end gap-3">
-                <button
-                  onClick={() => setShowDeleteConfirm(false)}
-                  className="px-4 py-2 text-white/70 hover:text-white transition-colors"
-                >
-                  Cancel
-                </button>
-                <ShadowContainer variant="colored">
-                  <button
-                    onClick={confirmDelete}
-                    className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
-                  >
-                    Delete
-                  </button>
-                </ShadowContainer>
-              </div>
-            </ShadowContainer>
-          </BackgroundGradient>
-        </div>
-      )}
+      <GlassDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        title="Delete Conversation"
+        description="Are you sure you want to delete this conversation? This action cannot be undone."
+        icon={<MessageSquare className="w-5 h-5 text-white/90" />}
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={confirmDelete}
+        variant="danger"
+      />
     </BrowserRouter>
   );
 }

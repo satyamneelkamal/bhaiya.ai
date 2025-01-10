@@ -5,43 +5,55 @@ export default {
   theme: {
     extend: {
       animation: {
-        "meteor-effect": "meteor 5s linear infinite",
-        shimmer: "shimmer 5s cubic-bezier(0.17, 0.55, 0.55, 1) infinite",
-        pulse: "pulse 4s ease-in-out infinite",
-        "text-reveal": "text-reveal 0.5s ease-out forwards",
+        "premium-shimmer": "premium-shimmer 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+        "gradient-shift": "gradient-shift 4s ease infinite",
+        "content-reveal": "content-reveal 0.5s ease-out forwards",
+        "hover-glow": "hover-glow 1.5s ease-in-out infinite",
       },
       keyframes: {
-        meteor: {
-          "0%": { transform: "rotate(215deg) translateX(0)", opacity: "1" },
-          "70%": { opacity: "1" },
+        "premium-shimmer": {
+          "0%": {
+            backgroundPosition: "200% 0",
+            opacity: "0.5",
+          },
           "100%": {
-            transform: "rotate(215deg) translateX(-500px)",
-            opacity: "0",
+            backgroundPosition: "-200% 0",
+            opacity: "0.5",
+          }
+        },
+        "gradient-shift": {
+          "0%, 100%": {
+            backgroundPosition: "0% 50%",
+            backgroundSize: "200% 200%",
+          },
+          "50%": {
+            backgroundPosition: "100% 50%",
+            backgroundSize: "200% 200%",
           },
         },
-        shimmer: {
-          "0%": { transform: "translateX(-100%)" },
-          "50%": { transform: "translateX(100%)" },
-          "100%": { transform: "translateX(-100%)" },
-        },
-        pulse: {
-          "0%": { opacity: "0.4" },
-          "50%": { opacity: "0.1" },
-          "100%": { opacity: "0.4" },
-        },
-        "text-reveal": {
+        "content-reveal": {
           "0%": {
             opacity: "0",
-            transform: "translateY(10px)",
+            transform: "translateY(8px)",
           },
           "100%": {
             opacity: "1",
             transform: "translateY(0)",
           },
         },
+        "hover-glow": {
+          "0%, 100%": {
+            opacity: "1",
+          },
+          "50%": {
+            opacity: "0.85",
+          },
+        },
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+        'gradient-premium': 'linear-gradient(135deg, var(--tw-gradient-stops))',
+        'shimmer-gradient': 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%)',
       },
     },
   },
