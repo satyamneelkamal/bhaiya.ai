@@ -3,6 +3,7 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
+## [0.2.0] - 2024-03-XX
 
 ### Added
 - Enhanced UI Components
@@ -56,6 +57,11 @@ All notable changes to this project will be documented in this file.
   - Add contextual fallback titles
 
 ### Technical
+- Setup GitHub Pages deployment
+  - Configure gh-pages package for deployment
+  - Add deployment scripts to package.json
+  - Setup proper base URL for GitHub Pages
+  - Add deployment documentation
 - Add shadow styling system
   - Implement type-safe shadow variants
   - Add utility functions for combining Tailwind classes
@@ -107,3 +113,15 @@ Current limitations:
 - Occasional API timeouts
 - Message formatting edge cases
 -->
+
+### Deployment
+To deploy the latest version:
+```bash
+# Build and deploy to GitHub Pages
+npm run deploy
+```
+
+Note: Make sure to:
+1. Commit all changes before deployment
+2. Update version in package.json
+3. Have proper GitHub Pages settings in your repository
