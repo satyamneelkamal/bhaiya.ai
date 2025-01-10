@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Search, PenSquare, SidebarClose, MessageSquare } from 'lucide-react';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { BrowserRouter } from 'react-router-dom';
+import { Skeleton } from "./components/ui/skeleton";
 
 interface Message {
   content: string;
@@ -17,6 +18,9 @@ interface Conversation {
   timestamp: Date;
 }
 
+const GEMINI_API_KEY = import.meta.env.GEMINI_API_KEY;
+console.log('GEMINI_API_KEY available:', !!GEMINI_API_KEY);
+
 function App() {
   const [conversations, setConversations] = useState<Conversation[]>([
     {
@@ -30,14 +34,22 @@ function App() {
   const [input, setInput] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [suggestions, setSuggestions] = useState<string[]>([
+    "Loading suggestions...",
+    "Loading suggestions...",
+    "Loading suggestions...",
+    "Loading suggestions..."
+  ]);
+  const [genAI, setGenAI] = useState<GoogleGenerativeAI | null>(null);
 
   useEffect(() => {
     if (!import.meta.env.GEMINI_API_KEY) {
       console.error('GEMINI_API_KEY is not set');
+      return;
     }
+    
+    setGenAI(new GoogleGenerativeAI(import.meta.env.GEMINI_API_KEY));
   }, []);
-
-  const genAI = new GoogleGenerativeAI(import.meta.env.GEMINI_API_KEY || '');
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -49,8 +61,8 @@ function App() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!import.meta.env.GEMINI_API_KEY) {
-      console.error('GEMINI_API_KEY is not set');
+    if (!genAI) {
+      console.error('Gemini AI not initialized');
       return;
     }
     if (!input.trim()) return;
@@ -132,29 +144,119 @@ function App() {
     return conversations.find(conv => conv.id === currentConversation);
   };
 
+  const generateSuggestions = async () => {
+    if (!genAI) {
+      console.error('Gemini AI not initialized');
+      return;
+    }
+
+    try {
+      const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+      setSuggestions(["Loading suggestions...", "Loading suggestions...", "Loading suggestions...", "Loading suggestions..."]);
+      
+      const prompt = `Generate 4 questions about technology, creativity, knowledge, and lifestyle. Format each question on a new line without any markdown or prefixes. Example format:
+What's the future of quantum computing?
+How can AI enhance creative writing?
+What are the latest discoveries in neuroscience?
+What are effective ways to improve work-life balance?`;
+      
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const text = response.text();
+      
+      console.log('API Response:', text);
+      
+      // Clean and process the suggestions
+      let newSuggestions = text
+        .split('\n')
+        .map(s => s.trim())
+        // Remove markdown formatting and prefixes
+        .map(s => s.replace(/^\*\*[^:]+:\*\*\s*/, ''))
+        .filter(s => s && s.length > 0);
+
+      console.log('Processed suggestions:', newSuggestions);
+
+      if (newSuggestions.length === 0) {
+        console.error('No suggestions received from API');
+        setSuggestions([
+          "What emerging technologies will shape our future?",
+          "How can AI enhance human creativity?",
+          "Explain a fascinating scientific concept",
+          "Share tips for personal development"
+        ]);
+        return;
+      }
+
+      // Ensure we have exactly 4 suggestions
+      while (newSuggestions.length < 4) {
+        newSuggestions.push(
+          "What emerging technologies will shape our future?",
+          "How can AI enhance human creativity?",
+          "Explain a fascinating scientific concept",
+          "Share tips for personal development"
+        );
+      }
+
+      setSuggestions(newSuggestions.slice(0, 4));
+    } catch (error) {
+      console.error('Error generating suggestions:', error);
+      setSuggestions([
+        "What emerging technologies will shape our future?",
+        "How can AI enhance human creativity?",
+        "Explain a fascinating scientific concept",
+        "Share tips for personal development"
+      ]);
+    }
+  };
+
+  useEffect(() => {
+    if (genAI) {
+      generateSuggestions();
+    }
+  }, [genAI]);
+
   const EmptyState = () => (
     <div className="flex-1 flex flex-col items-center justify-center p-4">
       <div className="w-16 h-16 bg-[#10A37F] rounded-full flex items-center justify-center mb-6">
         <Bot className="w-8 h-8 text-white" />
       </div>
-      <h1 className="text-4xl font-bold text-white mb-6">How can I help you today?</h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl w-full">
-        {[
-          "Explain quantum computing",
-          "Write a poem about spring",
-          "Debug my JavaScript code",
-          "Plan a 7-day itinerary"
-        ].map((suggestion, index) => (
-          <button
-            key={index}
-            onClick={() => {
-              setInput(suggestion);
-              document.querySelector('input')?.focus();
-            }}
-            className="p-4 bg-[#40414F] rounded-lg text-white text-left hover:bg-[#2A2B32] transition-colors"
+      <div className="flex items-center gap-2 mb-6">
+        <h1 className="text-4xl font-bold text-white">How can I help you today?</h1>
+        <button
+          onClick={generateSuggestions}
+          className="p-2 hover:bg-[#2A2B32] rounded-full transition-colors"
+          title="Refresh suggestions"
+        >
+          <svg 
+            className="w-6 h-6 text-white"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
           >
-            {suggestion}
-          </button>
+            <path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9" />
+          </svg>
+        </button>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl w-full">
+        {suggestions.map((suggestion, index) => (
+          suggestion === "Loading suggestions..." ? (
+            <Skeleton 
+              key={index}
+              className="h-[60px] w-full rounded-lg"
+            />
+          ) : (
+            <button
+              key={index}
+              onClick={() => {
+                setInput(suggestion);
+                document.querySelector('input')?.focus();
+              }}
+              className="p-4 bg-[#40414F] rounded-lg text-white text-left hover:bg-[#2A2B32] transition-colors"
+            >
+              {suggestion}
+            </button>
+          )
         ))}
       </div>
     </div>
