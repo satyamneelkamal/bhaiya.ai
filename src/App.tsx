@@ -6,18 +6,29 @@ import { BrowserRouter } from 'react-router-dom';
 import { Skeleton } from "./components/ui/skeleton";
 import { ShadowContainer } from "./components/ui/shadow-container";
 import { BackgroundGradient } from "./components/ui/background-gradient";
+import { cn } from "@/lib/utils";
+import { systemPrompts, generationConfig } from '@/lib/prompts';
 
 interface Message {
-  content: string;
+  content: string | React.ReactElement;
   sender: 'user' | 'bot';
   timestamp: Date;
 }
 
 interface Conversation {
   id: string;
-  title: string;
+  title: string | React.ReactElement;
   messages: Message[];
   timestamp: Date;
+}
+
+interface Part {
+  text: string;
+}
+
+interface ChatMessage {
+  role: 'user' | 'model';
+  parts: Part[];
 }
 
 const GEMINI_API_KEY = import.meta.env.GEMINI_API_KEY;
@@ -29,7 +40,6 @@ type CodeProps = ComponentPropsWithoutRef<'code'> & {
 };
 
 function App() {
-  const isEdgeBrowser = /Edg/.test(navigator.userAgent);
   const [conversations, setConversations] = useState<Conversation[]>([
     {
       id: '1',
@@ -73,17 +83,28 @@ function App() {
     e.preventDefault();
     if (!genAI || !input.trim()) return;
 
-    const userMessage: Message = {
-      content: input,
-      sender: 'user',
-      timestamp: new Date(),
-    };
+    const currentConv = conversations.find(c => c.id === currentConversation);
+    const chatHistory: ChatMessage[] = currentConv?.messages.map(msg => ({
+      role: msg.sender === 'user' ? 'user' : 'model',
+      parts: [{ text: msg.content as string }]
+    })) || [];
+
+    const systemPrompt = systemPrompts.conversational;
 
     setConversations(prev => prev.map(conv => {
       if (conv.id === currentConversation) {
         return {
           ...conv,
-          messages: [...conv.messages, userMessage],
+          title: conv.title,
+          messages: [...conv.messages, {
+            content: input,
+            sender: 'user',
+            timestamp: new Date()
+          }, {
+            content: <Skeleton className="min-h-[120px] w-full" />,
+            sender: 'bot',
+            timestamp: new Date()
+          }]
         };
       }
       return conv;
@@ -93,70 +114,50 @@ function App() {
 
     try {
       const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-      const currentConv = conversations.find(c => c.id === currentConversation);
       
-      let titlePromise;
+      let newTitle: string | React.ReactElement = currentConv?.title || 'New Chat';
       if (currentConv?.messages.length === 0) {
-        titlePromise = (async () => {
-          if (isEdgeBrowser) {
-            await new Promise(resolve => setTimeout(resolve, 100));
-          }
-          
-          let titleResult;
-          let retryCount = 0;
-          const maxRetries = 3;
-          
-          while (retryCount < maxRetries) {
-            try {
-              titleResult = await model.generateContent(`Generate a very brief title (4-5 words max) summarizing this message: "${input}"`);
-              if (!titleResult) {
-                throw new Error('Failed to generate title - no result returned');
-              }
-              break;
-            } catch (genError) {
-              retryCount++;
-              if (retryCount === maxRetries) throw genError;
-              await new Promise(resolve => setTimeout(resolve, 200 * retryCount));
-            }
-          }
-          
-          if (!titleResult) {
-            throw new Error('Failed to generate title after retries');
-          }
-          
-          const titleResponse = await titleResult.response;
-          const titleText = titleResponse?.text?.() || '';
-          return titleText.trim() || `Chat about ${input.slice(0, 20)}...`;
-        })();
-      }
-
-      const result = await model.generateContent(input);
-      const response = await result.response;
-      const text = response.text();
-
-      const botMessage: Message = {
-        content: text,
-        sender: 'bot',
-        timestamp: new Date(),
-      };
-
-      let finalTitle: string | undefined;
-      if (titlePromise) {
         try {
-          finalTitle = await titlePromise;
+          const titleResult = await model.generateContent({
+            contents: [{
+              role: 'user',
+              parts: [{ text: `Generate a very brief title (4-5 words max) summarizing this message: "${input}"` }]
+            }]
+          });
+          const titleText = titleResult.response.text().trim();
+          newTitle = titleText || `Chat about ${input.slice(0, 20)}...`;
         } catch (error) {
-          finalTitle = isEdgeBrowser ? 
-            'New Conversation' : 
-            `Chat about ${input.slice(0, 20)}...`;
+          console.error('Error generating title:', error);
+          newTitle = `Chat about ${input.slice(0, 20)}...`;
         }
       }
+
+      const chat = model.startChat({
+        history: [systemPrompt, ...chatHistory],
+        generationConfig: generationConfig.default
+      });
+
+      const result = await chat.sendMessage([
+        {
+          text: input
+        }
+      ]);
+      
+      const response = await result.response;
+      const text = response.text();
 
       setConversations(prev => prev.map(conv => {
         if (conv.id === currentConversation) {
           return {
             ...conv,
-            title: finalTitle || conv.title,
-            messages: [...conv.messages, botMessage],
+            title: newTitle,
+            messages: conv.messages
+              .filter(msg => !React.isValidElement(msg.content))
+              .concat({
+                content: text,
+                sender: 'bot',
+                timestamp: new Date(),
+              }),
           };
         }
         return conv;
@@ -294,7 +295,7 @@ What are effective ways to improve work-life balance?`;
           suggestion === "Loading suggestions..." ? (
             <Skeleton 
               key={index}
-              className="h-[60px] w-full rounded-lg"
+              className="h-[72px] w-full rounded-lg"
             />
           ) : (
             <button
@@ -443,38 +444,67 @@ What are effective ways to improve work-life balance?`;
                         </div>
                       )}
                     </div>
-                    <div className="min-h-[20px] flex flex-col flex-1">
-                      <div className="prose prose-invert prose-pre:bg-[#2A2B32] prose-pre:border prose-pre:border-white/10 prose-pre:rounded-lg max-w-none">
-                        <ReactMarkdown
-                          components={{
-                            p: ({ children }) => <p className="mb-4 last:mb-0">{children}</p>,
-                            h1: ({ children }) => <h1 className="text-2xl font-bold mb-4">{children}</h1>,
-                            h2: ({ children }) => <h2 className="text-xl font-bold mb-3">{children}</h2>,
-                            h3: ({ children }) => <h3 className="text-lg font-bold mb-2">{children}</h3>,
-                            ul: ({ children }) => <ul className="list-disc pl-6 mb-4">{children}</ul>,
-                            ol: ({ children }) => <ol className="list-decimal pl-6 mb-4">{children}</ol>,
-                            li: ({ children }) => <li className="mb-1">{children}</li>,
-                            code: function Code({ inline, className, children, ...props }: CodeProps) {
-                              if (inline) {
+                    <div className={cn(
+                      "min-h-[20px] flex flex-col flex-1",
+                      message.sender === 'bot' && 
+                      !React.isValidElement(message.content) && 
+                      message.timestamp > new Date(Date.now() - 1000) &&
+                        "animate-text-reveal [&_p]:animate-text-reveal [&_p]:opacity-0",
+                      "[&_p:nth-child(1)]:animation-delay-[0ms]",
+                      "[&_p:nth-child(2)]:animation-delay-[100ms]",
+                      "[&_p:nth-child(3)]:animation-delay-[200ms]",
+                      "[&_p:nth-child(4)]:animation-delay-[300ms]",
+                      "[&_p:nth-child(n+5)]:animation-delay-[400ms]"
+                    )}>
+                      {React.isValidElement(message.content) ? (
+                        message.content
+                      ) : (
+                        <div className="prose prose-invert prose-pre:bg-[#2A2B32] prose-pre:border prose-pre:border-white/10 prose-pre:rounded-lg max-w-none">
+                          <ReactMarkdown
+                            components={{
+                              p: ({ children }) => (
+                                <p className="mb-3 last:mb-0 leading-relaxed">{children}</p>
+                              ),
+                              h1: ({ children }) => (
+                                <h1 className="text-xl font-semibold mb-3">{children}</h1>
+                              ),
+                              h2: ({ children }) => (
+                                <h2 className="text-lg font-semibold mb-2">{children}</h2>
+                              ),
+                              h3: ({ children }) => (
+                                <h3 className="text-base font-semibold mb-2">{children}</h3>
+                              ),
+                              ul: ({ children }) => (
+                                <ul className="list-disc pl-4 mb-3 space-y-1">{children}</ul>
+                              ),
+                              ol: ({ children }) => (
+                                <ol className="list-decimal pl-4 mb-3 space-y-1">{children}</ol>
+                              ),
+                              li: ({ children }) => (
+                                <li className="mb-1">{children}</li>
+                              ),
+                              code: function Code({ inline, className, children, ...props }: CodeProps) {
+                                if (inline) {
+                                  return (
+                                    <code className="bg-[#2A2B32] px-1.5 py-0.5 rounded text-sm" {...props}>
+                                      {children}
+                                    </code>
+                                  );
+                                }
                                 return (
-                                  <code className="bg-[#2A2B32] px-1.5 py-0.5 rounded text-sm" {...props}>
-                                    {children}
-                                  </code>
+                                  <pre className="p-4 overflow-x-auto">
+                                    <code className="text-sm" {...props}>
+                                      {children}
+                                    </code>
+                                  </pre>
                                 );
                               }
-                              return (
-                                <pre className="p-4 overflow-x-auto">
-                                  <code className="text-sm" {...props}>
-                                    {children}
-                                  </code>
-                                </pre>
-                              );
-                            }
-                          }}
-                        >
-                          {message.content}
-                        </ReactMarkdown>
-                      </div>
+                            }}
+                          >
+                            {message.content as string}
+                          </ReactMarkdown>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

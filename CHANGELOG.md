@@ -13,6 +13,11 @@ All notable changes to this project will be documented in this file.
   - Add delete confirmation modal with modern glassmorphic design
   - Add animated gradient background effect to modals
   - Implement subtle glow effects with customizable opacity
+  - Enhanced Skeleton component with premium loading animations:
+    - Smooth horizontal shimmer with optimized timing
+    - Secondary gradient glow layer
+    - Ambient radial pulse effect
+    - Configurable dimensions and styling
 - Dynamic AI suggestions using Gemini API
   - Implement skeleton loading component for better UX
   - Add refresh functionality for suggestions
@@ -55,6 +60,12 @@ All notable changes to this project will be documented in this file.
   - Add proper error handling for Edge browser
   - Improve title generation reliability
   - Add contextual fallback titles
+- Improve message animations
+  - Increase text reveal animation duration from 0.5s to 1.0s for smoother effect
+  - Add proper documentation for animation settings
+  - Maintain staggered paragraph reveal delays
+  - Keep consistent ease-out timing function
+  - Document animation behavior in code comments
 
 ### Technical
 - Setup GitHub Pages deployment
@@ -125,3 +136,38 @@ Note: Make sure to:
 1. Commit all changes before deployment
 2. Update version in package.json
 3. Have proper GitHub Pages settings in your repository
+
+## [0.2.1] - 2024-03-XX
+
+### Changed
+- Improve message animations
+  - Fix text flicker during typing by adding timestamp check
+  - Optimize text reveal animation duration to 0.5s for snappier feedback
+  - Add condition to only animate messages newer than 1 second
+  - Maintain staggered paragraph animations for smooth reveal
+  - Add proper documentation for animation logic
+- Enhance AI conversation
+  - Move generation config to prompts.ts for better organization
+  - Add different generation presets (default, creative, precise)
+  - Update system prompt to be more engaging and natural
+  - Improve conversation flow with better prompt engineering
+  - Add detailed comments explaining animation and generation logic
+
+### Technical
+- Refactor configuration management
+  - Move AI generation config to prompts.ts
+  - Add TypeScript types for generation config
+  - Add documentation for config parameters
+  - Create preset configurations for different response styles
+- Improve code organization
+  - Centralize AI-related configurations
+  - Add detailed code comments
+  - Update type definitions
+  - Improve maintainability of animation code
+
+### Fixed
+- Message animation issues
+  - Fix text flicker during typing
+  - Prevent re-animation of existing messages
+  - Optimize animation performance
+  - Fix Edge cases with message timestamps
