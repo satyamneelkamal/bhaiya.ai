@@ -31,7 +31,13 @@ function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const genAI = new GoogleGenerativeAI(import.meta.env.GEMINI_API_KEY);
+  useEffect(() => {
+    if (!import.meta.env.GEMINI_API_KEY) {
+      console.error('GEMINI_API_KEY is not set');
+    }
+  }, []);
+
+  const genAI = new GoogleGenerativeAI(import.meta.env.GEMINI_API_KEY || '');
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -43,6 +49,10 @@ function App() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!import.meta.env.GEMINI_API_KEY) {
+      console.error('GEMINI_API_KEY is not set');
+      return;
+    }
     if (!input.trim()) return;
 
     const userMessage: Message = {
@@ -151,7 +161,7 @@ function App() {
   );
 
   return (
-    <BrowserRouter basename="/bhaiya.ai">
+    <BrowserRouter>
       <div className="h-screen flex bg-[#343541]">
         {/* Sidebar */}
         {isSidebarOpen && (
