@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, ComponentPropsWithoutRef } from 'react';
+import React, { useState, useRef, useEffect, ComponentPropsWithoutRef, forwardRef, useImperativeHandle } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Send, Bot, User, Search, PenSquare, SidebarClose, MessageSquare } from 'lucide-react';
 import { GoogleGenerativeAI } from '@google/generative-ai';
@@ -7,7 +7,7 @@ import { Skeleton } from "./components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { systemPrompts, generationConfig } from '@/lib/prompts';
 import { GlassDialog } from "./components/ui/glass-dialog";
-import { HomeButton } from './components/elements/home-button';
+import { HomeButton, HomeButtonRef } from './components/elements/home-button';
 // Temporarily comment out unused import
 // import { Background3D } from "./components/ui/background-3d";
 
@@ -33,6 +33,10 @@ interface ChatMessage {
   parts: Part[];
 }
 
+interface EmptyStateRef {
+  triggerLogoAnimation: () => void;
+}
+
 const GEMINI_API_KEY = import.meta.env.GEMINI_API_KEY;
 console.log('GEMINI_API_KEY available:', !!GEMINI_API_KEY);
 
@@ -41,19 +45,9 @@ type CodeProps = ComponentPropsWithoutRef<'code'> & {
   node?: any;
 };
 
-// Add a type for the highlight state
-type HighlightState = boolean | 'fading';
-
 function App() {
-  const [conversations, setConversations] = useState<Conversation[]>([
-    {
-      id: '1',
-      title: 'New Chat',
-      messages: [],
-      timestamp: new Date(),
-    },
-  ]);
-  const [currentConversation, setCurrentConversation] = useState<string>('1');
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [currentConversation, setCurrentConversation] = useState<string>('');
   const [input, setInput] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -67,7 +61,8 @@ function App() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [conversationToDelete, setConversationToDelete] = useState<string | null>(null);
   const [isMounted, setIsMounted] = useState(false);
-  const [highlightNewChat, setHighlightNewChat] = useState<HighlightState>(false);
+  const homeButtonRef = useRef<HomeButtonRef>(null);
+  const emptyStateRef = useRef<EmptyStateRef>(null);
 
   useEffect(() => {
     if (!import.meta.env.GEMINI_API_KEY) {
@@ -90,11 +85,28 @@ function App() {
     e.preventDefault();
     if (!genAI || !input.trim()) return;
 
-    const currentConv = conversations.find(c => c.id === currentConversation);
-    const chatHistory: ChatMessage[] = currentConv?.messages.map(msg => ({
+    let activeConversation;
+
+    // If we're on home page or there are no conversations, create a new one
+    if (!currentConversation || conversations.length === 0) {
+      const newId = Date.now().toString();
+      const newConversation: Conversation = {
+        id: newId,
+        title: 'New Chat',
+        messages: [],
+        timestamp: new Date(),
+      };
+      setConversations(prev => [...prev, newConversation]);
+      setCurrentConversation(newId);
+      activeConversation = newConversation;
+    } else {
+      activeConversation = conversations.find(c => c.id === currentConversation) || conversations[0];
+    }
+
+    const chatHistory: ChatMessage[] = activeConversation.messages.map(msg => ({
       role: msg.sender === 'user' ? 'user' : 'model',
       parts: [{ text: msg.content as string }]
-    })) || [];
+    }));
 
     const systemPrompt = systemPrompts.conversational;
 
@@ -122,8 +134,8 @@ function App() {
     try {
       const model = genAI.getGenerativeModel({ model: "gemini-pro" });
       
-      let newTitle: string | React.ReactElement = currentConv?.title || 'New Chat';
-      if (currentConv?.messages.length === 0) {
+      let newTitle: string | React.ReactElement = activeConversation?.title || 'New Chat';
+      if (activeConversation?.messages.length === 0) {
         try {
           const titleResult = await model.generateContent({
             contents: [{
@@ -191,39 +203,10 @@ function App() {
     }
   };
 
-  const handleHighlight = () => {
-    // First clear any existing highlight
-    setHighlightNewChat(false);
-    // Force a reflow with minimal timeout
-    setTimeout(() => {
-      setHighlightNewChat(true);
-      setTimeout(() => {
-        setHighlightNewChat('fading');
-        setTimeout(() => {
-          setHighlightNewChat(false);
-        }, 40); // Reduced from 150ms
-      }, 200); // Reduced from 400ms
-    }, 5); // Keep at 5ms for reliable reflow
-  };
-
   const startNewConversation = () => {
-    const existingNewChat = conversations.find(conv => conv.messages.length === 0);
-    
-    if (existingNewChat) {
-      setCurrentConversation(existingNewChat.id);
-      handleHighlight();
-      return;
-    }
-
-    // If no new chat exists, create one
-    const newConversation: Conversation = {
-      id: Date.now().toString(),
-      title: 'New Chat',
-      messages: [],
-      timestamp: new Date(),
-    };
-    setConversations(prev => [...prev, newConversation]);
-    setCurrentConversation(newConversation.id);
+    homeButtonRef.current?.triggerAnimation();
+    emptyStateRef.current?.triggerLogoAnimation();
+    setCurrentConversation('');
   };
 
   const getCurrentConversation = () => {
@@ -298,115 +281,130 @@ What are effective ways to improve work-life balance?`;
     }
   }, [genAI]);
 
-  const EmptyState = () => (
-    <div className="flex-1 flex flex-col items-center justify-center p-4 min-h-[calc(100vh-8rem)]">
-      {/* Clickable Logo Section */}
-      <button
-        onClick={generateSuggestions}
-        className="relative mb-8 group hover:scale-110 transition-all duration-700"
-        title="Refresh suggestions"
-        onMouseEnter={(e) => {
-          const target = e.currentTarget.querySelector('.logo-container') as HTMLDivElement;
-          if (target) {
-            target.classList.remove('animate-spin-once');
-            // Force a reflow
-            void target.offsetWidth;
-            target.classList.add('animate-spin-once');
-          }
-        }}
-      >
-        {/* Logo container with contained glow effects */}
-        <div className="logo-container relative w-20 h-20 bg-gradient-premium from-[#10A37F] to-[#0D8A6F] 
-          rounded-2xl rotate-12 transform-gpu
-          flex items-center justify-center
-          shadow-md shadow-[#10A37F]/10 group-hover:shadow-[#10A37F]/20
-          overflow-hidden animate-spin-once
-          hover:animate-bounce-subtle"
+  const EmptyState = forwardRef<EmptyStateRef>((_, ref) => {
+    const [isAnimating, setIsAnimating] = useState(false);
+
+    useImperativeHandle(ref, () => ({
+      triggerLogoAnimation: () => {
+        setIsAnimating(true);
+        setTimeout(() => {
+          setIsAnimating(false);
+        }, 700); // Slightly longer duration for logo animation
+      }
+    }));
+
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-4 min-h-[calc(100vh-8rem)]">
+        {/* Clickable Logo Section */}
+        <button
+          onClick={generateSuggestions}
+          className={cn(
+            "relative mb-8 group hover:scale-110 transition-all duration-700",
+            isAnimating && "animate-bounce-subtle"
+          )}
+          title="Refresh suggestions"
+          onMouseEnter={(e) => {
+            const target = e.currentTarget.querySelector('.logo-container') as HTMLDivElement;
+            if (target) {
+              target.classList.remove('animate-spin-once');
+              void target.offsetWidth;
+              target.classList.add('animate-spin-once');
+            }
+          }}
         >
-          {/* Internal glowing rings */}
-          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-all duration-700">
-            <div className="absolute inset-[-50%] bg-gradient-conic from-[#10A37F]/30 via-transparent to-[#10A37F]/30 
-              rounded-full blur-md animate-spin-slow" />
-            <div className="absolute inset-[-50%] bg-gradient-conic from-[#10A37F]/20 via-transparent to-[#10A37F]/20 
-              rounded-full blur-md animate-spin-slow-reverse" />
-            <div className="absolute inset-[-25%] bg-gradient-radial from-[#10A37F]/10 to-transparent 
-              rounded-full blur-sm animate-pulse-fast" />
-          </div>
-
-          {/* Shine effect overlay */}
-          <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent 
-            pointer-events-none group-hover:opacity-0 transition-opacity duration-700" />
-          
-          {/* Border effect */}
-          <div className="absolute inset-0 ring-1 ring-white/10 group-hover:ring-white/20 
-            rounded-2xl transition-all duration-700" />
-          
-          {/* Animated gradient borders */}
-          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 
-            transition-opacity duration-700 overflow-hidden"
+          {/* Logo container with contained glow effects */}
+          <div className="logo-container relative w-20 h-20 bg-gradient-premium from-[#10A37F] to-[#0D8A6F] 
+            rounded-2xl rotate-12 transform-gpu
+            flex items-center justify-center
+            shadow-md shadow-[#10A37F]/10 group-hover:shadow-[#10A37F]/20
+            overflow-hidden animate-spin-once
+            hover:animate-bounce-subtle"
           >
-            <div className="absolute inset-[-50%] bg-gradient-conic from-[#10A37F]/30 via-transparent to-[#10A37F]/30 
-              animate-spin-slow" />
-            <div className="absolute inset-[-25%] bg-gradient-radial from-[#10A37F]/20 to-transparent 
-              animate-pulse-fast" />
-          </div>
-          
-          {/* Icon with enhanced effects */}
-          <Bot className="w-10 h-10 text-white group-hover:scale-110 transition-all duration-700
-            drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)] relative z-10
-            group-hover:animate-wiggle" />
-        </div>
-      </button>
+            {/* Internal glowing rings */}
+            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-all duration-700">
+              <div className="absolute inset-[-50%] bg-gradient-conic from-[#10A37F]/30 via-transparent to-[#10A37F]/30 
+                rounded-full blur-md animate-spin-slow" />
+              <div className="absolute inset-[-50%] bg-gradient-conic from-[#10A37F]/20 via-transparent to-[#10A37F]/20 
+                rounded-full blur-md animate-spin-slow-reverse" />
+              <div className="absolute inset-[-25%] bg-gradient-radial from-[#10A37F]/10 to-transparent 
+                rounded-full blur-sm animate-pulse-fast" />
+            </div>
 
-      {/* Title Section */}
-      <div className="relative flex flex-col items-center gap-3 mb-12">
-        <div className="relative group">
-          <h1 className="text-5xl font-bold text-transparent bg-clip-text 
-            bg-gradient-to-r from-white via-white to-white/80
-            tracking-tight py-4 px-2 leading-[1.2]"
-          >
-            How can I help you today?
-          </h1>
-          
-          <div className="absolute bottom-0 left-0 right-0 h-[1px] 
-            bg-gradient-to-r from-transparent via-[#10A37F]/20 to-transparent
-            group-hover:via-[#10A37F]/30 transition-all duration-700" 
-          />
-        </div>
-      </div>
-
-      {/* Rest of the suggestions grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl w-full">
-        {suggestions.map((suggestion, index) => (
-          suggestion === "Loading suggestions..." ? (
-            <Skeleton 
-              key={index}
-              className="h-[72px] w-full rounded-lg"
-            />
-          ) : (
-            <button
-              key={index}
-              onClick={() => {
-                setInput(suggestion);
-                document.querySelector('input')?.focus();
-              }}
-              className="p-4 rounded-lg text-left transition-all duration-300
-                bg-gradient-premium from-[#40414F]/80 to-[#343541]/80
-                hover:from-[#40414F] hover:to-[#343541]
-                border border-white/[0.05] hover:border-white/[0.08]
-                group relative overflow-hidden"
+            {/* Shine effect overlay */}
+            <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent 
+              pointer-events-none group-hover:opacity-0 transition-opacity duration-700" />
+            
+            {/* Border effect */}
+            <div className="absolute inset-0 ring-1 ring-white/10 group-hover:ring-white/20 
+              rounded-2xl transition-all duration-700" />
+            
+            {/* Animated gradient borders */}
+            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 
+              transition-opacity duration-700 overflow-hidden"
             >
-              <div className="absolute inset-0 bg-gradient-premium from-white/[0.03] to-transparent 
-                opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              <p className="relative z-10 text-white/90 group-hover:text-white transition-colors">
-                {suggestion}
-              </p>
-            </button>
-          )
-        ))}
+              <div className="absolute inset-[-50%] bg-gradient-conic from-[#10A37F]/30 via-transparent to-[#10A37F]/30 
+                animate-spin-slow" />
+              <div className="absolute inset-[-25%] bg-gradient-radial from-[#10A37F]/20 to-transparent 
+                animate-pulse-fast" />
+            </div>
+            
+            {/* Icon with enhanced effects */}
+            <Bot className="w-10 h-10 text-white group-hover:scale-110 transition-all duration-700
+              drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)] relative z-10
+              group-hover:animate-wiggle" />
+          </div>
+        </button>
+
+        {/* Title Section */}
+        <div className="relative flex flex-col items-center gap-3 mb-12">
+          <div className="relative group">
+            <h1 className="text-5xl font-bold text-transparent bg-clip-text 
+              bg-gradient-to-r from-white via-white to-white/80
+              tracking-tight py-4 px-2 leading-[1.2]"
+            >
+              How can I help you today?
+            </h1>
+            
+            <div className="absolute bottom-0 left-0 right-0 h-[1px] 
+              bg-gradient-to-r from-transparent via-[#10A37F]/20 to-transparent
+              group-hover:via-[#10A37F]/30 transition-all duration-700" 
+            />
+          </div>
+        </div>
+
+        {/* Rest of the suggestions grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl w-full">
+          {suggestions.map((suggestion, index) => (
+            suggestion === "Loading suggestions..." ? (
+              <Skeleton 
+                key={index}
+                className="h-[72px] w-full rounded-lg"
+              />
+            ) : (
+              <button
+                key={index}
+                onClick={() => {
+                  setInput(suggestion);
+                  document.querySelector('input')?.focus();
+                }}
+                className="p-4 rounded-lg text-left transition-all duration-300
+                  bg-gradient-premium from-[#40414F]/80 to-[#343541]/80
+                  hover:from-[#40414F] hover:to-[#343541]
+                  border border-white/[0.05] hover:border-white/[0.08]
+                  group relative overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-gradient-premium from-white/[0.03] to-transparent 
+                  opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <p className="relative z-10 text-white/90 group-hover:text-white transition-colors">
+                  {suggestion}
+                </p>
+              </button>
+            )
+          ))}
+        </div>
       </div>
-    </div>
-  );
+    );
+  });
 
   const initiateDelete = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -439,7 +437,6 @@ What are effective ways to improve work-life balance?`;
     
     if (savedConversations) {
       try {
-        // Parse the saved conversations and restore dates
         const parsed = JSON.parse(savedConversations).map((conv: Conversation) => ({
           ...conv,
           timestamp: new Date(conv.timestamp),
@@ -451,7 +448,6 @@ What are effective ways to improve work-life balance?`;
         
         if (parsed.length > 0) {
           setConversations(parsed);
-          // Only set current conversation if it exists in parsed conversations
           if (savedCurrentConversation && parsed.some((conv: Conversation) => conv.id === savedCurrentConversation)) {
             setCurrentConversation(savedCurrentConversation);
           } else {
@@ -460,15 +456,9 @@ What are effective ways to improve work-life balance?`;
         }
       } catch (error) {
         console.error('Error loading saved conversations:', error);
-        // Initialize with default state if there's an error
-        const defaultConversation: Conversation = {
-          id: '1',
-          title: 'New Chat',
-          messages: [],
-          timestamp: new Date(),
-        };
-        setConversations([defaultConversation]);
-        setCurrentConversation('1');
+        // Initialize with empty state if there's an error
+        setConversations([]);
+        setCurrentConversation('');
       }
     }
   }, []); // Only run on mount
@@ -493,12 +483,9 @@ What are effective ways to improve work-life balance?`;
   }, [conversations, currentConversation, isMounted]);
 
   const handleHomeClick = () => {
-    // Only switch to existing new chat if it exists
-    const existingNewChat = conversations.find(conv => conv.messages.length === 0);
-    if (existingNewChat) {
-      setCurrentConversation(existingNewChat.id);
-    }
-    // Don't create a new chat if none exists
+    homeButtonRef.current?.triggerAnimation();
+    emptyStateRef.current?.triggerLogoAnimation();
+    setCurrentConversation('');
   };
 
   return (
@@ -514,7 +501,7 @@ What are effective ways to improve work-life balance?`;
         */}
 
         {/* Sidebar */}
-        {isSidebarOpen && (
+        {isSidebarOpen && conversations.length > 0 && (
           <div className="w-80 bg-[#202123] border-r border-white/20 flex flex-col relative">
             {/* Top Icons */}
             <div className="p-2 flex items-center justify-between border-b border-white/[0.05]">
@@ -542,6 +529,7 @@ What are effective ways to improve work-life balance?`;
             {/* HomeButton wrapper */}
             <div className="px-2 py-1">
               <HomeButton 
+                ref={homeButtonRef}
                 onNewChat={handleHomeClick}
               />
             </div>
@@ -559,24 +547,7 @@ What are effective ways to improve work-life balance?`;
                     "group w-full px-3 py-3 text-left text-white/90",
                     "hover:bg-gradient-to-r hover:from-[#2A2B32] hover:to-[#2A2B32]/80",
                     "transition-all duration-500 flex items-center gap-3 relative",
-                    // Base styles
-                    currentConversation === conv.id && "bg-gradient-to-r from-[#343541] to-[#343541]/90",
-                    // Premium highlight effect when it's a new chat and highlighted
-                    highlightNewChat && conv.messages.length === 0 && [
-                      "relative overflow-hidden",
-                      "before:absolute before:inset-0",
-                      "before:bg-gradient-to-r before:from-[#10A37F]/20 before:via-transparent before:to-[#10A37F]/20",
-                      "before:animate-shimmer-premium",
-                      "after:absolute after:inset-0",
-                      "after:bg-gradient-to-r after:from-transparent after:via-white/5 after:to-transparent",
-                      "after:animate-pulse-premium",
-                      "bg-gradient-to-r from-[#2A2B32] to-[#2A2B32]/90",
-                      "ring-2 ring-[#10A37F]/30",  // Enhanced ring
-                      "shadow-[0_0_20px_rgba(16,163,127,0.25)]", // Enhanced glow
-                      "animate-shake-subtle", // Add subtle shake
-                      // Add fade-out animation when fading
-                      highlightNewChat === 'fading' && "animate-highlight-fadeout"
-                    ]
+                    currentConversation === conv.id && "bg-gradient-to-r from-[#343541] to-[#343541]/90"
                   )}
                 >
                   {/* Active indicator */}
@@ -623,7 +594,7 @@ What are effective ways to improve work-life balance?`;
         {/* Main Chat Area */}
         <div className="flex-1 flex flex-col relative">
           {/* Top Bar */}
-          {!isSidebarOpen && (
+          {!isSidebarOpen && conversations.length > 0 && (
             <div className="border-b border-white/20 p-2">
               <button
                 onClick={() => setIsSidebarOpen(true)}
@@ -635,8 +606,8 @@ What are effective ways to improve work-life balance?`;
           )}
           
           <div className="flex-1 overflow-y-auto">
-            {getCurrentConversation()?.messages.length === 0 ? (
-              <EmptyState />
+            {(!currentConversation || getCurrentConversation()?.messages.length === 0) ? (
+              <EmptyState ref={emptyStateRef} />
             ) : (
               getCurrentConversation()?.messages.map((message, index) => (
                 <div
