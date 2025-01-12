@@ -93,7 +93,7 @@ function App() {
       const newConversation: Conversation = {
         id: newId,
         title: 'New Chat',
-        messages: [],
+        messages: [], // Start with empty messages
         timestamp: new Date(),
       };
       setConversations(prev => [...prev, newConversation]);
@@ -103,18 +103,11 @@ function App() {
       activeConversation = conversations.find(c => c.id === currentConversation) || conversations[0];
     }
 
-    const chatHistory: ChatMessage[] = activeConversation.messages.map(msg => ({
-      role: msg.sender === 'user' ? 'user' : 'model',
-      parts: [{ text: msg.content as string }]
-    }));
-
-    const systemPrompt = systemPrompts.conversational;
-
+    // Add the user's message and loading state for bot response
     setConversations(prev => prev.map(conv => {
-      if (conv.id === currentConversation) {
+      if (conv.id === activeConversation.id) {
         return {
           ...conv,
-          title: conv.title,
           messages: [...conv.messages, {
             content: input,
             sender: 'user',
@@ -127,6 +120,11 @@ function App() {
         };
       }
       return conv;
+    }));
+
+    const chatHistory: ChatMessage[] = activeConversation.messages.map(msg => ({
+      role: msg.sender === 'user' ? 'user' : 'model',
+      parts: [{ text: msg.content as string }]
     }));
 
     setInput('');
@@ -152,7 +150,7 @@ function App() {
       }
 
       const chat = model.startChat({
-        history: [systemPrompt, ...chatHistory],
+        history: [systemPrompts.conversational, ...chatHistory],
         generationConfig: generationConfig.default
       });
 
@@ -166,7 +164,7 @@ function App() {
       const text = response.text();
 
       setConversations(prev => prev.map(conv => {
-        if (conv.id === currentConversation) {
+        if (conv.id === activeConversation.id) {
           return {
             ...conv,
             title: newTitle,
@@ -474,7 +472,18 @@ What are effective ways to improve work-life balance?`;
 
     if (conversations.length > 0) {
       try {
-        localStorage.setItem('conversations', JSON.stringify(conversations));
+        // Clean the conversations before saving
+        const cleanConversations = conversations.map(conv => ({
+          ...conv,
+          messages: conv.messages.map(msg => ({
+            ...msg,
+            // Convert React elements to string placeholder
+            content: React.isValidElement(msg.content) ? 'Loading...' : msg.content,
+            timestamp: msg.timestamp
+          }))
+        }));
+        
+        localStorage.setItem('conversations', JSON.stringify(cleanConversations));
         localStorage.setItem('currentConversation', currentConversation);
       } catch (error) {
         console.error('Error saving to localStorage:', error);
