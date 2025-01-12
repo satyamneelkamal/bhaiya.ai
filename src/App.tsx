@@ -188,6 +188,16 @@ function App() {
   };
 
   const startNewConversation = () => {
+    // First check if there's already a new chat (empty conversation)
+    const existingNewChat = conversations.find(conv => conv.messages.length === 0);
+    
+    if (existingNewChat) {
+      // If there's already a new chat, just switch to it
+      setCurrentConversation(existingNewChat.id);
+      return;
+    }
+
+    // If no new chat exists, create one
     const newConversation: Conversation = {
       id: Date.now().toString(),
       title: 'New Chat',
@@ -464,6 +474,19 @@ What are effective ways to improve work-life balance?`;
     }
   }, [conversations, currentConversation, isMounted]);
 
+  const handleHomeClick = () => {
+    // Find any existing empty conversation
+    const existingNewChat = conversations.find(conv => conv.messages.length === 0);
+    
+    if (existingNewChat) {
+      // If there's an empty chat, switch to it
+      setCurrentConversation(existingNewChat.id);
+    } else {
+      // If no empty chat exists, create a new one
+      startNewConversation();
+    }
+  };
+
   return (
     <BrowserRouter>
       <div className="h-screen flex bg-[#343541] text-white relative overflow-hidden">
@@ -506,7 +529,7 @@ What are effective ways to improve work-life balance?`;
             <div className="px-2 py-1">
               <HomeButton 
                 isNewChat={getCurrentConversation()?.messages.length === 0}
-                onNewChat={startNewConversation}
+                onNewChat={handleHomeClick}
               />
             </div>
 
