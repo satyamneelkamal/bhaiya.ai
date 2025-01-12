@@ -1,16 +1,35 @@
+import { useState } from 'react';
 import { Bot } from 'lucide-react';
 import { cn } from "@/lib/utils";
 
 interface HomeButtonProps {
-  isNewChat?: boolean;
   onNewChat: () => void;
 }
 
-export function HomeButton({ isNewChat = false, onNewChat }: HomeButtonProps) {
+type HighlightState = boolean | 'fading';
+
+export function HomeButton({ onNewChat }: HomeButtonProps) {
+  const [highlightHome, setHighlightHome] = useState<HighlightState>(false);
+
+  const handleHomeHighlight = () => {
+    // First clear any existing highlight
+    setHighlightHome(false);
+    // Force a reflow with minimal timeout
+    setTimeout(() => {
+      setHighlightHome(true);
+      setTimeout(() => {
+        setHighlightHome('fading');
+        setTimeout(() => {
+          setHighlightHome(false);
+        }, 40);
+      }, 200);
+    }, 5);
+  };
+
   const handleClick = () => {
-    if (!isNewChat) {
-      onNewChat();
-    }
+    handleHomeHighlight();
+    // Don't trigger new chat creation
+    onNewChat?.();
   };
 
   return (
@@ -18,30 +37,31 @@ export function HomeButton({ isNewChat = false, onNewChat }: HomeButtonProps) {
       <button
         onClick={handleClick}
         className={cn(
-          // Base styles
           "flex items-center gap-3 w-full",
           "px-4 py-2.5 rounded-lg",
           "text-[15px] font-medium tracking-[-0.01em]",
-          
-          // Text colors
           "text-white/85 hover:text-white",
-          
-          // Background effects
           "bg-gradient-to-r from-[#10A37F]/5 to-transparent",
           "hover:from-[#10A37F]/10 hover:to-transparent/5",
-          
-          // Border effects
           "ring-1 ring-white/5 hover:ring-white/10",
-          
-          // Transitions
           "transition-all duration-500",
           "hover:shadow-lg hover:shadow-[#10A37F]/5",
-          
-          // Group hover effects
-          "group"
+          "group",
+          highlightHome && [
+            "relative overflow-hidden",
+            "before:absolute before:inset-0",
+            "before:bg-gradient-to-r before:from-[#10A37F]/20 before:via-transparent before:to-[#10A37F]/20",
+            "before:animate-shimmer-premium",
+            "after:absolute after:inset-0",
+            "after:bg-gradient-to-r after:from-transparent after:via-white/5 after:to-transparent",
+            "after:animate-pulse-premium",
+            "ring-2 ring-[#10A37F]/30",
+            "shadow-[0_0_20px_rgba(16,163,127,0.25)]",
+            "animate-shake-subtle",
+            highlightHome === 'fading' && "animate-highlight-fadeout"
+          ]
         )}
       >
-        {/* Logo container with premium effects */}
         <div className={cn(
           "relative flex items-center justify-center",
           "w-5 h-5 rounded-[4px] overflow-hidden",
@@ -49,7 +69,6 @@ export function HomeButton({ isNewChat = false, onNewChat }: HomeButtonProps) {
           "ring-1 ring-white/10 group-hover:ring-white/20",
           "transition-all duration-500",
           
-          // Shine effect
           "before:absolute before:inset-0",
           "before:bg-gradient-to-br before:from-white/10 before:to-transparent",
           "before:opacity-0 group-hover:before:opacity-100",
@@ -62,7 +81,6 @@ export function HomeButton({ isNewChat = false, onNewChat }: HomeButtonProps) {
           )} />
         </div>
 
-        {/* Text with proper spacing and gradient effect */}
         <span className={cn(
           "flex-1 text-left whitespace-nowrap",
           "bg-gradient-to-r from-white/90 to-white/80",

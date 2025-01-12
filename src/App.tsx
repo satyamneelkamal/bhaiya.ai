@@ -41,6 +41,9 @@ type CodeProps = ComponentPropsWithoutRef<'code'> & {
   node?: any;
 };
 
+// Add a type for the highlight state
+type HighlightState = boolean | 'fading';
+
 function App() {
   const [conversations, setConversations] = useState<Conversation[]>([
     {
@@ -64,6 +67,7 @@ function App() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [conversationToDelete, setConversationToDelete] = useState<string | null>(null);
   const [isMounted, setIsMounted] = useState(false);
+  const [highlightNewChat, setHighlightNewChat] = useState<HighlightState>(false);
 
   useEffect(() => {
     if (!import.meta.env.GEMINI_API_KEY) {
@@ -187,13 +191,27 @@ function App() {
     }
   };
 
+  const handleHighlight = () => {
+    // First clear any existing highlight
+    setHighlightNewChat(false);
+    // Force a reflow with minimal timeout
+    setTimeout(() => {
+      setHighlightNewChat(true);
+      setTimeout(() => {
+        setHighlightNewChat('fading');
+        setTimeout(() => {
+          setHighlightNewChat(false);
+        }, 40); // Reduced from 150ms
+      }, 200); // Reduced from 400ms
+    }, 5); // Keep at 5ms for reliable reflow
+  };
+
   const startNewConversation = () => {
-    // First check if there's already a new chat (empty conversation)
     const existingNewChat = conversations.find(conv => conv.messages.length === 0);
     
     if (existingNewChat) {
-      // If there's already a new chat, just switch to it
       setCurrentConversation(existingNewChat.id);
+      handleHighlight();
       return;
     }
 
@@ -475,16 +493,12 @@ What are effective ways to improve work-life balance?`;
   }, [conversations, currentConversation, isMounted]);
 
   const handleHomeClick = () => {
-    // Find any existing empty conversation
+    // Only switch to existing new chat if it exists
     const existingNewChat = conversations.find(conv => conv.messages.length === 0);
-    
     if (existingNewChat) {
-      // If there's an empty chat, switch to it
       setCurrentConversation(existingNewChat.id);
-    } else {
-      // If no empty chat exists, create a new one
-      startNewConversation();
     }
+    // Don't create a new chat if none exists
   };
 
   return (
@@ -528,7 +542,6 @@ What are effective ways to improve work-life balance?`;
             {/* HomeButton wrapper */}
             <div className="px-2 py-1">
               <HomeButton 
-                isNewChat={getCurrentConversation()?.messages.length === 0}
                 onNewChat={handleHomeClick}
               />
             </div>
@@ -542,10 +555,29 @@ What are effective ways to improve work-life balance?`;
                 <button
                   key={conv.id}
                   onClick={() => setCurrentConversation(conv.id)}
-                  className={`group w-full px-3 py-3 text-left text-white/90 
-                    hover:bg-gradient-to-r hover:from-[#2A2B32] hover:to-[#2A2B32]/80
-                    transition-all duration-300 flex items-center gap-3 relative
-                    ${currentConversation === conv.id ? 'bg-gradient-to-r from-[#343541] to-[#343541]/90' : ''}`}
+                  className={cn(
+                    "group w-full px-3 py-3 text-left text-white/90",
+                    "hover:bg-gradient-to-r hover:from-[#2A2B32] hover:to-[#2A2B32]/80",
+                    "transition-all duration-500 flex items-center gap-3 relative",
+                    // Base styles
+                    currentConversation === conv.id && "bg-gradient-to-r from-[#343541] to-[#343541]/90",
+                    // Premium highlight effect when it's a new chat and highlighted
+                    highlightNewChat && conv.messages.length === 0 && [
+                      "relative overflow-hidden",
+                      "before:absolute before:inset-0",
+                      "before:bg-gradient-to-r before:from-[#10A37F]/20 before:via-transparent before:to-[#10A37F]/20",
+                      "before:animate-shimmer-premium",
+                      "after:absolute after:inset-0",
+                      "after:bg-gradient-to-r after:from-transparent after:via-white/5 after:to-transparent",
+                      "after:animate-pulse-premium",
+                      "bg-gradient-to-r from-[#2A2B32] to-[#2A2B32]/90",
+                      "ring-2 ring-[#10A37F]/30",  // Enhanced ring
+                      "shadow-[0_0_20px_rgba(16,163,127,0.25)]", // Enhanced glow
+                      "animate-shake-subtle", // Add subtle shake
+                      // Add fade-out animation when fading
+                      highlightNewChat === 'fading' && "animate-highlight-fadeout"
+                    ]
+                  )}
                 >
                   {/* Active indicator */}
                   {currentConversation === conv.id && (
