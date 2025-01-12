@@ -505,13 +505,17 @@ What are effective ways to improve work-life balance?`;
             {/* HomeButton wrapper */}
             <div className="px-2 py-1">
               <HomeButton 
-                isNewChat={getCurrentConversation()?.messages.length === 0} 
+                isNewChat={getCurrentConversation()?.messages.length === 0}
+                onNewChat={startNewConversation}
               />
             </div>
 
             {/* Chat History */}
             <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-              {conversations.map(conv => (
+              {conversations
+                .slice() // Create a copy to avoid mutating original array
+                .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()) // Sort by timestamp, newest first
+                .map(conv => (
                 <button
                   key={conv.id}
                   onClick={() => setCurrentConversation(conv.id)}

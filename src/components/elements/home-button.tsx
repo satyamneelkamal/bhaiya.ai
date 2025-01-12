@@ -1,18 +1,15 @@
-import { useNavigate } from 'react-router-dom';
 import { Bot } from 'lucide-react';
 import { cn } from "@/lib/utils";
 
 interface HomeButtonProps {
   isNewChat?: boolean;
+  onNewChat: () => void;
 }
 
-export function HomeButton({ isNewChat = false }: HomeButtonProps) {
-  const navigate = useNavigate();
-
+export function HomeButton({ isNewChat = false, onNewChat }: HomeButtonProps) {
   const handleClick = () => {
-    if (!isNewChat) {  // Only navigate if we're not already on a new chat
-      navigate('/', { replace: true });
-      window.location.reload();
+    if (!isNewChat) {
+      onNewChat();
     }
   };
 
