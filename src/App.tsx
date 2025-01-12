@@ -63,6 +63,7 @@ function App() {
   const [genAI, setGenAI] = useState<GoogleGenerativeAI | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [conversationToDelete, setConversationToDelete] = useState<string | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
     if (!import.meta.env.GEMINI_API_KEY) {
@@ -402,6 +403,66 @@ What are effective ways to improve work-life balance?`;
     setShowDeleteConfirm(false);
     setConversationToDelete(null);
   };
+
+  // Replace the existing useEffects for localStorage with this fixed version
+  useEffect(() => {
+    const savedConversations = localStorage.getItem('conversations');
+    const savedCurrentConversation = localStorage.getItem('currentConversation');
+    
+    if (savedConversations) {
+      try {
+        // Parse the saved conversations and restore dates
+        const parsed = JSON.parse(savedConversations).map((conv: Conversation) => ({
+          ...conv,
+          timestamp: new Date(conv.timestamp),
+          messages: conv.messages.map((msg: Message) => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp)
+          }))
+        }));
+        
+        if (parsed.length > 0) {
+          setConversations(parsed);
+          // Only set current conversation if it exists in parsed conversations
+          if (savedCurrentConversation && parsed.some((conv: Conversation) => conv.id === savedCurrentConversation)) {
+            setCurrentConversation(savedCurrentConversation);
+          } else {
+            setCurrentConversation(parsed[0].id);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading saved conversations:', error);
+        // Initialize with default state if there's an error
+        const defaultConversation: Conversation = {
+          id: '1',
+          title: 'New Chat',
+          messages: [],
+          timestamp: new Date(),
+        };
+        setConversations([defaultConversation]);
+        setCurrentConversation('1');
+      }
+    }
+  }, []); // Only run on mount
+
+  // Separate useEffect for saving - add a check for mounted state
+  useEffect(() => {
+    setIsMounted(true);
+    return () => setIsMounted(false);
+  }, []);
+
+  useEffect(() => {
+    if (!isMounted) return; // Skip initial render
+
+    if (conversations.length > 0) {
+      try {
+        localStorage.setItem('conversations', JSON.stringify(conversations));
+        localStorage.setItem('currentConversation', currentConversation);
+      } catch (error) {
+        console.error('Error saving to localStorage:', error);
+      }
+    }
+  }, [conversations, currentConversation, isMounted]);
 
   return (
     <BrowserRouter>
