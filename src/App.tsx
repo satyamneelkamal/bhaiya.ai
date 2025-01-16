@@ -63,6 +63,8 @@ function App() {
   const [isMounted, setIsMounted] = useState(false);
   const homeButtonRef = useRef<HomeButtonRef>(null);
   const emptyStateRef = useRef<EmptyStateRef>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     if (!import.meta.env.GEMINI_API_KEY) {
@@ -497,6 +499,22 @@ What are effective ways to improve work-life balance?`;
     setCurrentConversation('');
   };
 
+  const filteredConversations = conversations.filter(conv => {
+    if (!searchQuery) return true;
+    
+    // Search in title
+    if (typeof conv.title === 'string' && 
+        conv.title.toLowerCase().includes(searchQuery.toLowerCase())) {
+      return true;
+    }
+    
+    // Search in messages
+    return conv.messages.some(msg => 
+      typeof msg.content === 'string' && 
+      msg.content.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  });
+
   return (
     <BrowserRouter>
       <div className="h-screen flex bg-[#343541] text-white relative overflow-hidden">
@@ -522,7 +540,11 @@ What are effective ways to improve work-life balance?`;
               </button>
               <div className="flex items-center gap-2">
                 <button
-                  className="p-2 hover:bg-white/5 rounded-md transition-all duration-300 hover:scale-105"
+                  onClick={() => setIsSearching(!isSearching)}
+                  className={cn(
+                    "p-2 rounded-md transition-all duration-300 hover:scale-105",
+                    isSearching ? "bg-white/10" : "hover:bg-white/5"
+                  )}
                 >
                   <Search className="w-5 h-5 text-white/80 hover:text-white" />
                 </button>
@@ -534,6 +556,26 @@ What are effective ways to improve work-life balance?`;
                 </button>
               </div>
             </div>
+
+            {/* Search Input */}
+            {isSearching && (
+              <div className="px-2 py-2 border-b border-white/[0.05]">
+                <div className="relative group">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search conversations..."
+                    className="w-full bg-[#202123] text-white rounded-lg 
+                      pl-9 pr-4 py-2 text-sm
+                      border border-white/[0.05] group-hover:border-white/[0.08]
+                      focus:outline-none focus:border-white/[0.15] focus:ring-1 focus:ring-white/[0.15]
+                      transition-all duration-300"
+                  />
+                  <Search className="w-4 h-4 text-white/40 absolute left-3 top-1/2 -translate-y-1/2" />
+                </div>
+              </div>
+            )}
             
             {/* HomeButton wrapper */}
             <div className="px-2 py-1">
@@ -543,11 +585,11 @@ What are effective ways to improve work-life balance?`;
               />
             </div>
 
-            {/* Chat History */}
+            {/* Chat History - Update to use filteredConversations */}
             <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-              {conversations
-                .slice() // Create a copy to avoid mutating original array
-                .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()) // Sort by timestamp, newest first
+              {filteredConversations
+                .slice()
+                .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
                 .map(conv => (
                 <button
                   key={conv.id}
@@ -596,6 +638,13 @@ What are effective ways to improve work-life balance?`;
                   </button>
                 </button>
               ))}
+              
+              {/* No results message */}
+              {searchQuery && filteredConversations.length === 0 && (
+                <div className="px-3 py-8 text-center text-white/40 text-sm">
+                  No conversations found matching "{searchQuery}"
+                </div>
+              )}
             </div>
           </div>
         )}
