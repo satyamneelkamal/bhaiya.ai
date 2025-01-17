@@ -207,6 +207,8 @@ function App() {
     homeButtonRef.current?.triggerAnimation();
     emptyStateRef.current?.triggerLogoAnimation();
     setCurrentConversation('');
+    setIsSearching(false);
+    setSearchQuery('');
   };
 
   const getCurrentConversation = () => {
@@ -497,6 +499,8 @@ What are effective ways to improve work-life balance?`;
     homeButtonRef.current?.triggerAnimation();
     emptyStateRef.current?.triggerLogoAnimation();
     setCurrentConversation('');
+    setIsSearching(false);
+    setSearchQuery('');
   };
 
   const filteredConversations = conversations.filter(conv => {
